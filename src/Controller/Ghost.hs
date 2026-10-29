@@ -3,6 +3,13 @@ module Controller.Ghost where
 import Data.List (minimumBy)
 import Data.Ord (comparing)
 import Model
+    ( GameState(ghosts, player),
+      Ghost(ghostPos, ghostMode, homeCorner, ghostType),
+      GhostMode(Chase, Scatter, Frightened),
+      GhostType(Red, Pink, Cyan, Orange, Purple),
+      PacMan(pacmanDir, pacmanPos),
+      Direction(..),
+      Position )
 
 ghostTarget :: Ghost -> GameState -> Position
 ghostTarget ghost gamestate = case ghostMode ghost of
@@ -26,7 +33,7 @@ chooseNextMove currentPos validDirs target =
   minimumBy (comparing (distance target . stepInDir currentPos)) validDirs
 
 targetRed :: Position -> Position
-targetRed pacmanPos = pacmanPos
+targetRed playerPos = playerPos
 
 targetPink :: Position -> Direction -> Position
 targetPink (x, y) dir = case dir of
@@ -36,14 +43,14 @@ targetPink (x, y) dir = case dir of
   Model.Right -> (x + 4, y)
 
 targetCyan :: Position -> Direction -> Position -> Position
-targetCyan pacmanPos pacmanDir redPos =
-  let intermediate = targetAhead 2 pacmanPos pacmanDir
+targetCyan playerPos pacmanDirection redPos =
+  let intermediate = targetAhead 2 playerPos pacmanDirection
       vector       = intermediate `subtractPos` redPos
   in intermediate `addPos` vector
 
 targetOrange :: Position -> Position -> Position -> Position
-targetOrange orangePos pacmanPos orangeHomeCorner
-  | distance orangePos pacmanPos > 8 = pacmanPos
+targetOrange orangePos playerPos orangeHomeCorner
+  | distance orangePos playerPos > 8 = playerPos
   | otherwise                        = orangeHomeCorner
 
 targetPurple :: Ghost -> GameState -> Position

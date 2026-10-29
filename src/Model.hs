@@ -1,6 +1,6 @@
 module Model where
 
-import System.Random (StdGen, getStdGen)
+import System.Random (StdGen)
 
 type Position = (Int, Int)
 

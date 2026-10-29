@@ -1,6 +1,6 @@
 module View where
 
-import Graphics.Gloss (Picture, color, white, scale, translate, text)
+import Graphics.Gloss (Picture)
 import Model (GameState)
 
 renderGameIO :: GameState -> IO Picture

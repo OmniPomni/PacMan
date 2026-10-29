@@ -3,7 +3,7 @@ name:               pacman
 version:            0.1.0.0
 synopsis:           Pac-Man in Haskell using Gloss
 license:            NONE
-author:             Max
+author:             Max Haijes, Anass Zaoujal
 build-type:         Simple
 
 executable pacman
