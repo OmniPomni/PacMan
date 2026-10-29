@@ -74,6 +74,7 @@ distance = undefined
 
 stepInDir :: Position -> Direction -> Position
 stepInDir = undefined
+
 targetAhead :: Int -> Position -> Direction -> Position
 targetAhead = undefined
 
