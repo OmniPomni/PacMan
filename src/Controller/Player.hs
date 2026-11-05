@@ -12,4 +12,23 @@ bufferInput (EventKey (SpecialKey KeyRight) Down _ _) pacman = pacman {queuedDir
 bufferInput _ pacman = pacman
 
 updatePacManPosition :: Grid -> PacMan -> PacMan
-updatePacManPosition _ pacman = pacman
+updatePacManPosition grid pacman = 
+    let pos  = pacmanPos pacman
+        cdir = pacmanDir pacman
+
+        -- Helper to check if a direction is free of Walls and the Ghost Gate
+        canMoveInDir dir = 
+            let tile = Model.getTile grid (Model.stepInDir pos dir)
+            in tile /= Wall && tole /= Gate
+
+    in case queuedDir pacman of
+        -- If the queued direction is valid, move in that direction and clear the queue
+        Just qDir | canMove qDir ->
+            pacman { pacmanPos = Model.stepInDir pos qDir
+                   , pacmanDir = qDir
+                   , queuedDir = Nothing }
+        -- if the current path is clear, continue moving in current direction
+        _ | canMove cDir ->
+            pacman { pacmanPos = Model.stepInDir pos cDir }
+        -- if both the queued direction and current direction are blocked, stop moving
+        _ -> pacman

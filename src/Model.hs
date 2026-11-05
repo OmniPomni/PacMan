@@ -96,6 +96,20 @@ instance Movable Ghost where
   getDir = ghostDir
   setPos pos g = g { ghostPos = pos }
 
+stepInDir :: Position -> Direction -> Position
+stepInDir (x, y) dir = case dir of
+  Up    -> (x, y + 1)
+  Down  -> (x, y - 1)
+  Left  -> (x - 1, y)
+  Right -> (x + 1, y)
+
+-- Prevents crashing by returning Wall for out-of-grid positions.
+getTile :: Grid -> Position -> Tile
+getTile grid (x, y)
+  | y < 0 || y >= length grid                     = Wall
+  | x < 0 || null grid || x >= length (head grid) = Wall
+  | otherwise                                     = (grid !! y) !! x
+
 -- Default initial game state for testing
 initialGame :: IO GameState
 initialGame = undefined

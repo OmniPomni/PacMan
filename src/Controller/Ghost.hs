@@ -73,12 +73,6 @@ distance :: Position -> Position -> Float
 distance (x1, y1) (x2, y2) =
   sqrt (fromIntegral ((x2 - x1) ^(2 :: Int) + (y2 - y1) ^ (2 :: Int)))
 
-stepInDir :: Position -> Direction -> Position
-stepInDir (x, y) dir = case dir of
-  Up    -> (x, y + 1)
-  Down  -> (x, y - 1)
-  Left  -> (x - 1, y)
-  Right -> (x + 1, y)
 
 targetAhead :: Int -> Position -> Direction -> Position
 targetAhead n (x, y) dir = case dir of
@@ -100,13 +94,6 @@ oppositeDir dir = case dir of
   Left  -> Right
   Right -> Left
 
-
--- Prevents crashing by returning Wall for out-of-grid positions.
-getTile :: Grid -> Position -> Tile
-getTile grid (x, y)
-  | y < 0 || y >= length grid                     = Wall
-  | x < 0 || null grid || x >= length (head grid) = Wall
-  | otherwise                                     = (grid !! y) !! x
 
 getValidGhostDirs :: Grid -> Ghost -> [Direction]
 getValidGhostDirs grid ghost = 
