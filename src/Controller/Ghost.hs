@@ -70,16 +70,25 @@ targetPurple _ gamestate
 
 
 distance :: Position -> Position -> Float
-distance = undefined
+distance (x1, y1) (x2, y2) =
+  sqrt (fromIntegral ((x2 - x1) ^(2 :: Int) + (y2 - y1) ^ (2 :: Int)))
 
 stepInDir :: Position -> Direction -> Position
-stepInDir = undefined
+stepInDir (x, y) dir = case dir of
+  Up    -> (x, y + 1)
+  Down  -> (x, y - 1)
+  Left  -> (x - 1, y)
+  Right -> (x + 1, y)
 
 targetAhead :: Int -> Position -> Direction -> Position
-targetAhead = undefined
+targetAhead n (x, y) dir = case dir of
+  Up    -> (x, y + n)
+  Down  -> (x, y - n)
+  Left  -> (x - n, y)
+  Right -> (x + n, y)
 
 addPos :: Position -> Position -> Position
-addPos = undefined
+addPos (x1, y1) (x2, y2) = (x1 + x2, y1 + y2)
 
 subtractPos :: Position -> Position -> Position
-subtractPos = undefined
+subtractPos (x1, y1) (x2, y2) = (x1 - x2, y1 - y2)
