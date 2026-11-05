@@ -31,8 +31,8 @@ targetRed playerPos = playerPos
 
 targetPink :: Position -> Direction -> Position
 targetPink (x, y) dir = case dir of
-  Model.Up    -> (x, y + 4)
-  Model.Down  -> (x, y - 4)
+  Model.Up    -> (x, y - 4)
+  Model.Down  -> (x, y + 4)
   Model.Left  -> (x - 4, y)
   Model.Right -> (x + 4, y)
 
@@ -70,8 +70,8 @@ distance (x1, y1) (x2, y2) =
 
 targetAhead :: Int -> Position -> Direction -> Position
 targetAhead n (x, y) dir = case dir of
-  Model.Up    -> (x, y + n)
-  Model.Down  -> (x, y - n)
+  Model.Up    -> (x, y - n)
+  Model.Down  -> (x, y + n)
   Model.Left  -> (x - n, y)
   Model.Right -> (x + n, y)
 
@@ -103,3 +103,14 @@ getValidGhostDirs g ghost =
         in if null validForwardDirs
            then filter isNotWall allDirs -- If no valid forward direction, allow reversing
            else validForwardDirs
+
+
+updateGhost :: GameState -> Ghost -> Ghost
+updateGhost gstate ghost =
+  let g         = grid gstate
+      validDirs = getValidGhostDirs g ghost
+      target    = ghostTarget ghost gstate
+      nextDir   = chooseNextMove (ghostPos ghost) validDirs target
+  in ghost { ghostPos = stepInDir (ghostPos ghost) nextDir
+           , ghostDir = nextDir 
+           }

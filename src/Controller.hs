@@ -1,9 +1,10 @@
 module Controller where
 
 import Graphics.Gloss.Interface.IO.Game
-import Model (GameState(..), GameScreen(..))
+import Model (GameState(..), GameScreen(..), PacMan(..), Ghost(..), GhostType(..), GhostMode(..))
+import qualified Model
 import Controller.Player (bufferInput, updatePacManPosition)
-import Controller.Ghost ()
+import Controller.Ghost (updateGhost)
 
 handleInputIO :: Event -> GameState -> IO GameState
 handleInputIO event gstate = return (handleInput event gstate)
@@ -21,7 +22,7 @@ handleInput event gstate = case gameScreen gstate of
         EventKey (Char '1') Down _ _ -> gstate {gameScreen = Playing, currentLevel = 1}
         EventKey (Char '2') Down _ _ -> gstate {gameScreen = Playing, currentLevel = 2}
         EventKey (Char '3') Down _ _ -> gstate {gameScreen = Playing, currentLevel = 3}
-        _                           -> gstate
+        _                            -> gstate
 
     -- Press p to (un)pause the game and handle player input when the game is not paused
     Playing -> case event of
@@ -37,6 +38,35 @@ handleInput event gstate = case gameScreen gstate of
         _                                       -> gstate
 
 
+handleCollisions :: GameState -> GameState
+handleCollisions gstate
+    | any (\g -> ghostPos g == pacmanPos (player gstate)) (ghosts gstate) =
+        if lives gstate > 1
+        then gstate { lives = lives gstate - 1
+                    , player = PacMan (13, 23) Model.Left Nothing
+                    , ghosts = [Ghost Red (13, 11) Model.Left Chase (26, 1) 0.0, Ghost Pink (13, 14) Model.Left Chase (1, 1) 0.0, Ghost Cyan (12, 14) Model.Left Chase (26, 1) 0.0, Ghost Orange (14, 14) Model.Left Chase (1, 1) 0.0] }
+        else gstate { lives = 1
+                    , gameScreen = GameOver }
+    | otherwise = gstate
+
+
+updateWaveTimer :: Float -> GameState -> GameState
+updateWaveTimer dt gstate = 
+    let newTimer = modeTimer gstate + dt
+        cMode = currentMode gstate
+
+        (nextMode, threshold) = case cMode of
+            Scatter    -> (Chase, 7.0)
+            Chase      -> (Scatter, 20.0)
+            _          -> (cMode, 999.0)  -- Fallback for Frightened mode, which doesn't switch automatically
+    
+    in if newTimer >= threshold
+        then gstate { currentMode = nextMode
+                    , modeTimer   = 0
+                    , ghosts      = map (\g -> g {ghostMode = nextMode}) (ghosts gstate) }
+        else gstate { modeTimer = newTimer }
+
+
 updateGameIO :: Float -> GameState -> IO GameState
 updateGameIO dt gstate = return (updateGame dt gstate)
 
@@ -44,10 +74,12 @@ updateGame :: Float -> GameState -> GameState
 updateGame dt gstate
   | isPaused gstate = gstate
   | gameScreen gstate == Playing = 
-      let newTimer = animationTimer gstate + dt
-      in if newTimer >= 0.15 -- Game speed variable. Higher = slower, lower = faster
-         then gstate { player = updatePacManPosition (grid gstate) (player gstate)
-                     , animationTimer = 0 
-                     }
-         else gstate { animationTimer = newTimer }
+      let gstateWithTimer = updateWaveTimer dt gstate
+          newAnimTimer    = animationTimer gstateWithTimer + dt
+      in if newAnimTimer >= 0.15 
+         then handleCollisions $ gstateWithTimer { player = updatePacManPosition (grid gstateWithTimer) (player gstateWithTimer)
+                                                 , ghosts = map (updateGhost gstateWithTimer) (ghosts gstateWithTimer)
+                                                 , animationTimer = 0 
+                                                 }
+         else gstateWithTimer { animationTimer = newAnimTimer }
   | otherwise = gstate

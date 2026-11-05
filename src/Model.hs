@@ -98,8 +98,8 @@ instance Movable Ghost where
 
 stepInDir :: Position -> Direction -> Position
 stepInDir (x, y) dir = case dir of
-  Model.Up    -> (x, y + 1)
-  Model.Down  -> (x, y - 1)
+  Model.Up    -> (x, y - 1)
+  Model.Down  -> (x, y + 1)
   Model.Left  -> (x - 1, y)
   Model.Right -> (x + 1, y)
 
@@ -115,21 +115,50 @@ initialGame :: IO GameState
 initialGame = do
   gen <- getStdGen
   
-  let testGrid = 
-        [ [Wall, Wall,  Wall,  Wall,  Wall,  Wall,  Wall,  Wall,  Wall,  Wall,  Wall]
-        , [Wall, Empty, Empty, Empty, Wall,  Empty, Empty, Empty, Empty, Empty, Wall]
-        , [Wall, Empty, Wall,  Empty, Wall,  Empty, Wall,  Wall,  Wall,  Empty, Wall]
-        , [Wall, Empty, Wall,  Empty, Empty, Empty, Empty, Empty, Wall,  Empty, Wall]
-        , [Wall, Empty, Wall,  Wall,  Wall,  Empty, Wall,  Empty, Wall,  Empty, Wall]
-        , [Wall, Empty, Empty, Empty, Empty, Empty, Wall,  Empty, Empty, Empty, Wall]
-        , [Wall, Empty, Wall,  Wall,  Wall,  Empty, Wall,  Wall,  Wall,  Empty, Wall]
-        , [Wall, Empty, Empty, Empty, Wall,  Empty, Empty, Empty, Empty, Empty, Wall]
-        , [Wall, Wall,  Wall,  Wall,  Wall,  Wall,  Wall,  Wall,  Wall,  Wall,  Wall] ]
+  let layout = 
+        [ "############################"
+        , "#............##............#"
+        , "#.####.#####.##.#####.####.#"
+        , "#.####.#####.##.#####.####.#"
+        , "#.####.#####.##.#####.####.#"
+        , "#..........................#"
+        , "#.####.##.########.##.####.#"
+        , "#.####.##.########.##.####.#"
+        , "#......##....##....##......#"
+        , "######.#####.##.#####.######"
+        , "######.#####.##.#####.######"
+        , "######.##..........##.######"
+        , "######.##.###--###.##.######"
+        , "######.##.#......#.##.######"
+        , "..........#......#.........."
+        , "######.##.#......#.##.######"
+        , "######.##.########.##.######"
+        , "######.##..........##.######"
+        , "######.##.########.##.######"
+        , "######.##.########.##.######"
+        , "#............##............#"
+        , "#.####.#####.##.#####.####.#"
+        , "#.####.#####.##.#####.####.#"
+        , "#...##................##...#"
+        , "###.##.##.########.##.##.###"
+        , "###.##.##.########.##.##.###"
+        , "#......##....##....##......#"
+        , "#.##########.##.##########.#"
+        , "#.##########.##.##########.#"
+        , "#..........................#"
+        , "############################"
+        ]
+        
+      charToTile '#' = Wall
+      charToTile '-' = Gate
+      charToTile _   = Empty
+      
+      arcadeGrid = map (map charToTile) layout
                  
   return GameState
-    { player         = PacMan (1, 1) Model.Right Nothing
-    , ghosts         = []
-    , grid           = testGrid
+    { player         = PacMan (13, 23) Model.Left Nothing
+    , ghosts         = [Ghost Red (13, 11) Model.Left Chase (26, 1) 0.0, Ghost Pink (13, 14) Model.Left Chase (1, 1) 0.0, Ghost Cyan (12, 14) Model.Left Chase (26, 1) 0.0, Ghost Orange (14, 14) Model.Left Chase (1, 1) 0.0]
+    , grid           = arcadeGrid
     , score          = 0
     , lives          = 3
     , currentMode    = Scatter
