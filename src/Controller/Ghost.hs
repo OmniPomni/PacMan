@@ -92,3 +92,33 @@ addPos (x1, y1) (x2, y2) = (x1 + x2, y1 + y2)
 
 subtractPos :: Position -> Position -> Position
 subtractPos (x1, y1) (x2, y2) = (x1 - x2, y1 - y2)
+
+oppositeDir :: Direction -> Direction
+oppositeDir dir = case dir of
+  Up    -> Down
+  Down  -> Up
+  Left  -> Right
+  Right -> Left
+
+
+-- Prevents crashing by returning Wall for out-of-grid positions.
+getTile :: Grid -> Position -> Tile
+getTile grid (x, y)
+  | y < 0 || y >= length grid                     = Wall
+  | x < 0 || null grid || x >= length (head grid) = Wall
+  | otherwise                                     = (grid !! y) !! x
+
+getValidGhostDirs :: Grid -> Ghost -> [Direction]
+getValidGhostDirs grid ghost = 
+  let currentPos = ghostPos ghost
+      currentDir = ghostDir ghost
+      allDirs = [Up, Down, Left, Right]
+      
+      -- Check if current direction doesn't lead to a wall
+      isNotWall d = getTile grid (stepInDir currentPos d) /= Wall
+
+      -- Filter out the reverse direction and walls but allow reversing if no other options are available
+      validForwardDirs = filter (\d -> d /= oppositeDir currentDir && isNotWall d) allDirs
+        in if null validForwardDirs
+           then filter isNotWall allDirs -- If no valid forward direction, allow reversing
+           else validForwardDirs
