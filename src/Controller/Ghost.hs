@@ -2,14 +2,8 @@ module Controller.Ghost where
 
 import Data.List (minimumBy)
 import Data.Ord (comparing)
-import Model
-    ( GameState(ghosts, player),
-      Ghost(ghostPos, ghostMode, homeCorner, ghostType),
-      GhostMode(Chase, Scatter, Frightened),
-      GhostType(Red, Pink, Cyan, Orange, Purple),
-      PacMan(pacmanDir, pacmanPos),
-      Direction(..),
-      Position )
+import Model (GameState(..), Ghost(..), GhostType(..), GhostMode(..), Position, Direction, Grid, PacMan(..), Tile(Wall), stepInDir, getTile)
+import qualified Model
 
 ghostTarget :: Ghost -> GameState -> Position
 ghostTarget ghost gamestate = case ghostMode ghost of
@@ -76,10 +70,10 @@ distance (x1, y1) (x2, y2) =
 
 targetAhead :: Int -> Position -> Direction -> Position
 targetAhead n (x, y) dir = case dir of
-  Up    -> (x, y + n)
-  Down  -> (x, y - n)
-  Left  -> (x - n, y)
-  Right -> (x + n, y)
+  Model.Up    -> (x, y + n)
+  Model.Down  -> (x, y - n)
+  Model.Left  -> (x - n, y)
+  Model.Right -> (x + n, y)
 
 addPos :: Position -> Position -> Position
 addPos (x1, y1) (x2, y2) = (x1 + x2, y1 + y2)
@@ -89,20 +83,20 @@ subtractPos (x1, y1) (x2, y2) = (x1 - x2, y1 - y2)
 
 oppositeDir :: Direction -> Direction
 oppositeDir dir = case dir of
-  Up    -> Down
-  Down  -> Up
-  Left  -> Right
-  Right -> Left
+  Model.Up    -> Model.Down
+  Model.Down  -> Model.Up
+  Model.Left  -> Model.Right
+  Model.Right -> Model.Left
 
 
 getValidGhostDirs :: Grid -> Ghost -> [Direction]
-getValidGhostDirs grid ghost = 
+getValidGhostDirs g ghost = 
   let currentPos = ghostPos ghost
       currentDir = ghostDir ghost
-      allDirs = [Up, Down, Left, Right]
+      allDirs = [Model.Up, Model.Down, Model.Left, Model.Right]
       
       -- Check if current direction doesn't lead to a wall
-      isNotWall d = getTile grid (stepInDir currentPos d) /= Wall
+      isNotWall d = getTile g (stepInDir currentPos d) /= Wall
 
       -- Filter out the reverse direction and walls but allow reversing if no other options are available
       validForwardDirs = filter (\d -> d /= oppositeDir currentDir && isNotWall d) allDirs

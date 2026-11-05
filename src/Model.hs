@@ -1,6 +1,6 @@
 module Model where
 
-import System.Random (StdGen)
+import System.Random (StdGen, getStdGen)
 
 type Position = (Int, Int)
 
@@ -98,18 +98,47 @@ instance Movable Ghost where
 
 stepInDir :: Position -> Direction -> Position
 stepInDir (x, y) dir = case dir of
-  Up    -> (x, y + 1)
-  Down  -> (x, y - 1)
-  Left  -> (x - 1, y)
-  Right -> (x + 1, y)
+  Model.Up    -> (x, y + 1)
+  Model.Down  -> (x, y - 1)
+  Model.Left  -> (x - 1, y)
+  Model.Right -> (x + 1, y)
 
 -- Prevents crashing by returning Wall for out-of-grid positions.
 getTile :: Grid -> Position -> Tile
-getTile grid (x, y)
-  | y < 0 || y >= length grid                     = Wall
-  | x < 0 || null grid || x >= length (head grid) = Wall
-  | otherwise                                     = (grid !! y) !! x
+getTile g (x, y)
+  | y < 0 || y >= length g                  = Wall
+  | x < 0 || null g || x >= length (g !! y) = Wall
+  | otherwise                               = (g !! y) !! x
 
 -- Default initial game state for testing
 initialGame :: IO GameState
-initialGame = undefined
+initialGame = do
+  gen <- getStdGen
+  
+  let testGrid = 
+        [ [Wall, Wall,  Wall,  Wall,  Wall,  Wall,  Wall,  Wall,  Wall,  Wall,  Wall]
+        , [Wall, Empty, Empty, Empty, Wall,  Empty, Empty, Empty, Empty, Empty, Wall]
+        , [Wall, Empty, Wall,  Empty, Wall,  Empty, Wall,  Wall,  Wall,  Empty, Wall]
+        , [Wall, Empty, Wall,  Empty, Empty, Empty, Empty, Empty, Wall,  Empty, Wall]
+        , [Wall, Empty, Wall,  Wall,  Wall,  Empty, Wall,  Empty, Wall,  Empty, Wall]
+        , [Wall, Empty, Empty, Empty, Empty, Empty, Wall,  Empty, Empty, Empty, Wall]
+        , [Wall, Empty, Wall,  Wall,  Wall,  Empty, Wall,  Wall,  Wall,  Empty, Wall]
+        , [Wall, Empty, Empty, Empty, Wall,  Empty, Empty, Empty, Empty, Empty, Wall]
+        , [Wall, Wall,  Wall,  Wall,  Wall,  Wall,  Wall,  Wall,  Wall,  Wall,  Wall] ]
+                 
+  return GameState
+    { player         = PacMan (1, 1) Model.Right Nothing
+    , ghosts         = []
+    , grid           = testGrid
+    , score          = 0
+    , lives          = 3
+    , currentMode    = Scatter
+    , modeTimer      = 0
+    , isPaused       = False
+    , rng            = gen
+    , animationTimer = 0
+    , deathAnimation = Nothing
+    , highScore      = 0
+    , currentLevel   = 1
+    , gameScreen     = StartScreen
+    }
