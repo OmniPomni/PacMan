@@ -1,7 +1,7 @@
 module Controller where
 
 import Graphics.Gloss.Interface.IO.Game
-import Model (GameState(..), GameScreen(..), PacMan(..), Ghost(..), GhostType(..), GhostMode(..))
+import Model (GameState(..), GameScreen(..), PacMan(..), Ghost(..), GhostType(..), GhostMode(..), setTile)
 import qualified Model
 import Controller.Player (bufferInput, updatePacManPosition)
 import Controller.Ghost (updateGhost)
@@ -66,6 +66,14 @@ updateWaveTimer dt gstate =
                     , ghosts      = map (\g -> g {ghostMode = nextMode}) (ghosts gstate) }
         else gstate { modeTimer = newTimer }
 
+consumeTile :: GameState -> GameState
+consumeTile gstate =
+    let pPos = pacmanPos (player gstate)
+        g    = grid gstate
+    in case Model.getTile g pPos of
+        Model.Pellet -> gstate { grid  = Model.setTile pPos Model.Empty g
+                               , score = score gstate + 10 }
+        _            -> gstate
 
 updateGameIO :: Float -> GameState -> IO GameState
 updateGameIO dt gstate = return (updateGame dt gstate)
@@ -77,9 +85,10 @@ updateGame dt gstate
       let gstateWithTimer = updateWaveTimer dt gstate
           newAnimTimer    = animationTimer gstateWithTimer + dt
       in if newAnimTimer >= 0.15 
-         then handleCollisions $ gstateWithTimer { player = updatePacManPosition (grid gstateWithTimer) (player gstateWithTimer)
-                                                 , ghosts = map (updateGhost gstateWithTimer) (ghosts gstateWithTimer)
-                                                 , animationTimer = 0 
-                                                 }
+         then let movedState = gstateWithTimer { player = updatePacManPosition (grid gstateWithTimer) (player gstateWithTimer)
+                                               , ghosts = map (updateGhost gstateWithTimer) (ghosts gstateWithTimer)
+                                               , animationTimer = 0 
+                                               }
+              in handleCollisions (consumeTile movedState)
          else gstateWithTimer { animationTimer = newAnimTimer }
   | otherwise = gstate

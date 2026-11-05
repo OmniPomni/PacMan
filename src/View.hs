@@ -53,16 +53,17 @@ drawGrid g = pictures
   ]
 
 drawTile :: Tile -> Picture
-drawTile Wall = color blue $ rectangleSolid tileSize tileSize
-drawTile Gate = color white $ rectangleSolid tileSize (tileSize / 4)
-drawTile _    = blank
+drawTile Wall   = color blue $ rectangleSolid tileSize tileSize
+drawTile Gate   = color white $ rectangleSolid tileSize (tileSize / 4)
+drawTile Pellet = color (light (light orange)) $ circleSolid (tileSize / 6)
+drawTile _      = blank
 
 renderPlaying :: GameState -> Picture
 renderPlaying gstate = pictures $ 
   [ drawGrid (grid gstate)
   , drawPacMan (player gstate)
   ] ++ map drawGhost (ghosts gstate) 
-    ++ [ drawHUD (lives gstate) ]
+    ++ [ drawHUD (lives gstate) (score gstate) ]
 
 drawGhost :: Ghost -> Picture
 drawGhost g =
@@ -75,10 +76,13 @@ drawGhost g =
                    Purple -> violet
   in translate sx sy $ color gColor $ circleSolid (tileSize / 2)
 
-drawHUD :: Int -> Picture
-drawHUD livesCount =
-  -- Draw the lives count at the top left corner of the screen
-  translate 0 (-tileSize) $ scale 0.15 0.15 $ color white $ text ("Lives: " ++ show livesCount)
+drawHUD :: Int -> Int -> Picture
+drawHUD livesCount currentScore = pictures
+  [ -- Score positioned above the top-left of the maze
+    translate (-300) 390 $ scale 0.15 0.15 $ color white $ text ("Score: " ++ show currentScore)
+  , -- Lives positioned below the bottom-left of the maze
+    translate (-300) (-390) $ scale 0.15 0.15 $ color white $ text ("Lives: " ++ show livesCount)
+  ]
 
 renderGameOver :: Picture
 renderGameOver = pictures 

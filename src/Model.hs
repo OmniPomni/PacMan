@@ -21,6 +21,12 @@ data Tile
 
 type Grid = [[Tile]]
 
+replaceAt :: Int -> a -> [a] -> [a]
+replaceAt i x xs = take i xs ++ [x] ++ drop (i + 1) xs
+
+setTile :: Position -> Tile -> Grid -> Grid
+setTile (x, y) newTile g = replaceAt y (replaceAt x newTile (g !! y)) g
+
 data PacMan = PacMan
   { pacmanPos :: Position
   , pacmanDir :: Direction
@@ -129,9 +135,9 @@ initialGame = do
         , "######.#####.##.#####.######"
         , "######.##..........##.######"
         , "######.##.###--###.##.######"
-        , "######.##.#......#.##.######"
-        , "..........#......#.........."
-        , "######.##.#......#.##.######"
+        , "######.##.#      #.##.######"
+        , "..........#      #.........."
+        , "######.##.#      #.##.######"
         , "######.##.########.##.######"
         , "######.##..........##.######"
         , "######.##.########.##.######"
@@ -151,12 +157,13 @@ initialGame = do
         
       charToTile '#' = Wall
       charToTile '-' = Gate
+      charToTile '.' = Pellet
       charToTile _   = Empty
       
       arcadeGrid = map (map charToTile) layout
                  
   return GameState
-    { player         = PacMan (13, 23) Model.Left Nothing
+    { player         = PacMan (13, 23) Model.Down Nothing
     , ghosts         = [Ghost Red (13, 11) Model.Left Chase (26, 1) 0.0, Ghost Pink (13, 14) Model.Left Chase (1, 1) 0.0, Ghost Cyan (12, 14) Model.Left Chase (26, 1) 0.0, Ghost Orange (14, 14) Model.Left Chase (1, 1) 0.0]
     , grid           = arcadeGrid
     , score          = 0
