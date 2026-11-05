@@ -61,6 +61,7 @@ data GameScreen
   | LevelSelect
   | Playing
   | GameOver
+  | LevelComplete
   deriving (Eq, Show)
 
 data Level = Level
@@ -123,7 +124,7 @@ initialGame = do
   
   let layout = 
         [ "############################"
-        , "#............##............#"
+        , "#o...........##...........o#"
         , "#.####.#####.##.#####.####.#"
         , "#.####.#####.##.#####.####.#"
         , "#.####.#####.##.#####.####.#"
@@ -151,13 +152,14 @@ initialGame = do
         , "#......##....##....##......#"
         , "#.##########.##.##########.#"
         , "#.##########.##.##########.#"
-        , "#..........................#"
+        , "#o...........##...........o#"
         , "############################"
         ]
         
       charToTile '#' = Wall
       charToTile '-' = Gate
       charToTile '.' = Pellet
+      charToTile 'o' = Energizer
       charToTile _   = Empty
       
       arcadeGrid = map (map charToTile) layout

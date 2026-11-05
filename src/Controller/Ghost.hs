@@ -1,6 +1,7 @@
-module Controller.Ghost where
+module Controller.Ghost (updateGhosts) where
 
-import Data.List (minimumBy)
+import System.Random (randomR, StdGen)
+import Data.List (minimumBy, mapAccumL)
 import Data.Ord (comparing)
 import Model (GameState(..), Ghost(..), GhostType(..), GhostMode(..), Position, Direction, Grid, PacMan(..), Tile(Wall), stepInDir, getTile)
 import qualified Model
@@ -105,12 +106,21 @@ getValidGhostDirs g ghost =
            else validForwardDirs
 
 
-updateGhost :: GameState -> Ghost -> Ghost
-updateGhost gstate ghost =
+updateGhosts :: GameState -> (StdGen, [Ghost])
+updateGhosts gstate = mapAccumL (updateSingleGhost gstate) (rng gstate) (ghosts gstate)
+
+updateSingleGhost :: GameState -> StdGen -> Ghost -> (StdGen, Ghost)
+updateSingleGhost gstate gen ghost =
   let g         = grid gstate
       validDirs = getValidGhostDirs g ghost
-      target    = ghostTarget ghost gstate
-      nextDir   = chooseNextMove (ghostPos ghost) validDirs target
-  in ghost { ghostPos = stepInDir (ghostPos ghost) nextDir
-           , ghostDir = nextDir 
-           }
+  in if ghostMode ghost == Frightened
+     then let (idx, newGen) = randomR (0, length validDirs - 1) gen
+              nextDir       = validDirs !! idx
+          in (newGen, ghost { ghostPos = stepInDir (ghostPos ghost) nextDir
+                            , ghostDir = nextDir 
+                            })
+     else let target  = ghostTarget ghost gstate
+              nextDir = chooseNextMove (ghostPos ghost) validDirs target
+          in (gen, ghost { ghostPos = stepInDir (ghostPos ghost) nextDir
+                         , ghostDir = nextDir 
+                         })

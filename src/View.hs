@@ -1,7 +1,7 @@
 module View where
 
 import Graphics.Gloss
-import Model (GameState(..), GameScreen(..), Grid, Tile(..), PacMan(..), Position, Ghost(..), GhostType(..))
+import Model (GameState(..), GameScreen(..), Grid, Tile(..), PacMan(..), Position, Ghost(..), GhostType(..), GhostMode(..))
 
 tileSize :: Float
 tileSize = 24.0
@@ -34,6 +34,7 @@ renderGame gstate = case gameScreen gstate of
     StartScreen -> renderStartScreen
     LevelSelect -> renderLevelSelect
     Playing     -> renderPlaying gstate
+    LevelComplete -> renderLevelComplete
     GameOver    -> renderGameOver
 
 -- renderGame helper functions
@@ -42,6 +43,12 @@ renderStartScreen = translate (-150) 0 $ scale 0.25 0.25 $ color white $ text "P
 
 renderLevelSelect :: Picture
 renderLevelSelect = translate (-200) 0 $ scale 0.25 0.25 $ color white $ text "Press 1 to load Test Maze"
+
+renderLevelComplete :: Picture
+renderLevelComplete = pictures 
+  [ translate (-120) 20 $ scale 0.25 0.25 $ color green $ text "YOU WIN!"
+  , translate (-200) (-30) $ scale 0.15 0.15 $ color white $ text "Press ENTER to return"
+  ]
 
 -- Draws the grid by iterating over each tile and drawing it
 drawGrid :: Grid -> Picture
@@ -53,10 +60,11 @@ drawGrid g = pictures
   ]
 
 drawTile :: Tile -> Picture
-drawTile Wall   = color blue $ rectangleSolid tileSize tileSize
-drawTile Gate   = color white $ rectangleSolid tileSize (tileSize / 4)
-drawTile Pellet = color (light (light orange)) $ circleSolid (tileSize / 6)
-drawTile _      = blank
+drawTile Wall      = color blue $ rectangleSolid tileSize tileSize
+drawTile Gate      = color white $ rectangleSolid tileSize (tileSize / 4)
+drawTile Pellet    = color (light (light orange)) $ circleSolid (tileSize / 6)
+drawTile Energizer = color chartreuse $ circleSolid (tileSize / 2.5)
+drawTile _         = blank
 
 renderPlaying :: GameState -> Picture
 renderPlaying gstate = pictures $ 
@@ -68,12 +76,14 @@ renderPlaying gstate = pictures $
 drawGhost :: Ghost -> Picture
 drawGhost g =
   let (sx, sy) = gridToScreen (ghostPos g)
-      gColor   = case ghostType g of
-                   Red    -> red
-                   Pink   -> magenta
-                   Cyan   -> cyan
-                   Orange -> orange
-                   Purple -> violet
+      gColor   = if ghostMode g == Frightened 
+                 then azure 
+                 else case ghostType g of
+                        Red    -> red
+                        Pink   -> magenta
+                        Cyan   -> cyan
+                        Orange -> orange
+                        Purple -> violet
   in translate sx sy $ color gColor $ circleSolid (tileSize / 2)
 
 drawHUD :: Int -> Int -> Picture
