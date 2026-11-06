@@ -81,6 +81,7 @@ data GameState = GameState
   , modeTimer      :: Float
   , isPaused       :: Bool
   , rng            :: StdGen
+  , mouthAnimationTime :: Float
   , animationTimer :: Float
   , ghostMoveTimer :: Float
   , ghostMovesPerSecond :: Float
@@ -89,6 +90,9 @@ data GameState = GameState
   , currentLevel   :: Int
   , gameScreen     :: GameScreen
   } deriving (Show)
+
+deathAnimationDuration :: Float
+deathAnimationDuration = 0.5
 
 class Movable a where
   getPos :: a -> Position
@@ -157,6 +161,7 @@ initialGame = do
     , animationTimer = 0
     , ghostMoveTimer = 0
     , ghostMovesPerSecond = 1 / 0.15
+    , mouthAnimationTime = 0
     , deathAnimation = Nothing
     , highScore      = 0
     , currentLevel   = 1

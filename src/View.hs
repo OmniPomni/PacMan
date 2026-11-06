@@ -2,6 +2,7 @@ module View where
 
 import Graphics.Gloss
 import Model (GameState(..), GameScreen(..), Grid, Tile(..), PacMan(..), Position, Ghost(..), GhostType(..), GhostMode(..))
+import qualified Model
 
 tileSize :: Float
 tileSize = 24.0
@@ -74,11 +75,19 @@ drawTile Energizer = color chartreuse $ circleSolid (tileSize / 2.5)
 drawTile _         = blank
 
 renderPlaying :: GameState -> Picture
-renderPlaying gstate = pictures $ 
-  [ drawGrid (grid gstate)
-  , drawPacMan (player gstate)
-  ] ++ map drawGhost (ghosts gstate) 
-    ++ [ drawHUD (lives gstate) (score gstate) ]
+renderPlaying state = pictures
+  [ drawGrid (grid state)
+  , actors
+  , drawHUD (lives state) (score state)
+  ]
+  where
+    actors :: Picture
+    actors = case deathAnimation state of
+      Just elapsed -> drawPacMan (deathMouthAngle elapsed) (player state)
+      Nothing ->
+        pictures
+          (drawPacMan (mouthAngle (mouthAnimationTime state)) (player state)
+            : map drawGhost (ghosts state))
 
 drawGhost :: Ghost -> Picture
 drawGhost g =
@@ -115,7 +124,38 @@ renderGameOver = pictures
   ]
 
 -- Draws Pac-Man at his current position
-drawPacMan :: PacMan -> Picture
-drawPacMan pacman = 
-    let (sx, sy) = gridToScreen (pacmanPos pacman)
-    in translate sx sy $ color yellow $ circleSolid (tileSize / 2)
+mouthFrameDuration :: Float
+mouthFrameDuration = 0.04
+
+mouthAngle :: Float -> Float
+mouthAngle elapsed =
+  case (floor (elapsed / mouthFrameDuration) :: Int) `mod` 4 of
+    0 -> 0
+    2 -> 40
+    _ -> 20
+
+deathMouthAngle :: Float -> Float
+deathMouthAngle elapsed =
+  let frameCount = 7 :: Int
+      progress = elapsed / Model.deathAnimationDuration
+      frame = min (frameCount - 1) (floor (progress * fromIntegral frameCount))
+  in 180 * fromIntegral frame / fromIntegral (frameCount - 1)
+
+drawPacMan :: Float -> PacMan -> Picture
+drawPacMan opening pacman =
+-- Keep color inside rotate so Gloss rotates the whole picture, not doing this distorts the animation.
+ translate sx sy $ rotate rotation $ color yellow body
+  where
+    (sx, sy) = gridToScreen (pacmanPos pacman)
+    radius = tileSize / 2
+
+    rotation = case pacmanDir pacman of
+      Model.Right -> 0
+      Model.Down  -> 90
+      Model.Left  -> 180
+      Model.Up    -> -90
+
+    body
+      | opening <= 0   = circleSolid radius
+      | opening >= 180 = blank
+      | otherwise      = thickArc opening (360 - opening) (radius / 2) radius

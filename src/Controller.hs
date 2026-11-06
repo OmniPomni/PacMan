@@ -29,10 +29,10 @@ handleInput event gstate = case gameScreen gstate of
     -- Press p to (un)pause the game and handle player input when the game is not paused
     Playing -> case event of
         EventKey (Char 'p') Down _ _ -> gstate {isPaused = not (isPaused gstate)}
-        _                            -> 
-            if not (isPaused gstate)
-                then gstate { player = bufferInput event (player gstate)}
-                else gstate
+        _                          
+          | isPaused gstate -> gstate
+          | Just _ <- deathAnimation gstate -> gstate
+          | otherwise -> gstate { player = bufferInput event (player gstate)}
     
     -- When dead, press Enter to return to the main menu
     GameOver -> case event of
@@ -50,31 +50,33 @@ startLevel number state =
     Just level -> loadLevel level state
     Nothing    -> state
 
-handleCollisions :: GameState -> GameState
-handleCollisions gstate
-  -- Hit a regular ghost
-  | any (\g -> ghostPos g == pPos && ghostMode g /= Frightened) gs =
-      if lives gstate > 1
-      then gstate { lives  = lives gstate - 1
-                  , player = PacMan (13, 23) Model.Left Nothing
-                  , ghosts = ghostsForLevel (currentLevel gstate) 
-                  }
-      else gstate { lives = 0, gameScreen = GameOver }
-      
-  -- Hit a frightened ghost
-  | any (\g -> ghostPos g == pPos && ghostMode g == Frightened) gs =
-      let resetEaten g 
-            | ghostPos g == pPos = g { ghostPos = (13, 11), ghostMode = Chase } 
-            | otherwise          = g
-      in gstate { score  = score gstate + 500
-                , ghosts = map resetEaten gs 
-                }
-                
-  -- No collision
-  | otherwise = gstate
-  where 
-    pPos = pacmanPos (player gstate)
-    gs   = ghosts gstate
+handleCollisions :: GameState -> GameState -> GameState
+handleCollisions before after
+  | any ((/= Frightened) . ghostMode . snd) hits =
+      after { deathAnimation = Just 0, gameScreen = Playing }
+  | null hits = after
+  | otherwise =
+      after { score = score after + 500
+            , ghosts = map resetIfHit ghostPairs
+            }
+  where
+    oldPacManPos = pacmanPos (player before)
+    newPacManPos = pacmanPos (player after)
+    ghostPairs = zip (ghosts before) (ghosts after)
+    hits = filter collided ghostPairs
+-- A collision occurs when Pac-Man and a ghost end on the same tile
+-- we check both the old and new positions, otherwise collision would only work if both pacman
+-- and ghost are on the same tile on the same tick.
+    collided :: (Ghost, Ghost) -> Bool
+    collided (oldGhost, newGhost) =
+      ghostPos newGhost == newPacManPos
+        || (ghostPos oldGhost == newPacManPos
+            && ghostPos newGhost == oldPacManPos)
+
+    resetIfHit :: (Ghost, Ghost) -> Ghost
+    resetIfHit pair@(_, ghost)
+      | collided pair = ghost { ghostPos = (13, 11), ghostMode = Chase }
+      | otherwise     = ghost
 
 
 updateWaveTimer :: Float -> GameState -> GameState
@@ -116,14 +118,35 @@ consumeTile gstate =
      then newState { gameScreen = LevelComplete }
      else newState
 
+advanceDeath :: Float -> Float -> GameState -> GameState
+advanceDeath dt elapsed state
+  | elapsed + dt < Model.deathAnimationDuration = 
+      state { deathAnimation = Just (elapsed + dt) }
+  | lives state <= 1 = state { lives = 0, deathAnimation = Nothing, gameScreen = GameOver}
+  | otherwise = 
+      state 
+        { lives = lives state - 1
+        , player = PacMan (13, 23) Model.Left Nothing
+        , ghosts = ghostsForLevel (currentLevel state)
+        , animationTimer = 0
+        , ghostMoveTimer = 0
+        , mouthAnimationTime = 0
+        , deathAnimation = Nothing
+        , gameScreen = if isGridCleared (grid state) then LevelComplete else Playing}
+
+
 updateGameIO :: Float -> GameState -> IO GameState
 updateGameIO dt gstate = return (updateGame dt gstate)
 
 updateGame :: Float -> GameState -> GameState
 updateGame dt state
   | isPaused state || gameScreen state /= Playing = state
+-- Advance only the death animation while the board and ghost timers are frozen.
+  | Just elapsed <- deathAnimation state = advanceDeath dt elapsed state
   | otherwise =
       let timed = updateWaveTimer dt state
+          nextPlayer = updatePacManPosition (grid timed) (player timed)
+          playerCanMove = pacmanPos nextPlayer /= pacmanPos (player timed)
           playerTime = animationTimer timed + dt
           ghostTime = ghostMoveTimer timed + dt
           playerInterval = 0.15
@@ -135,14 +158,16 @@ updateGame dt state
             if ghostsReady then updateGhosts timed else (rng timed, ghosts timed)
 
           moved = timed
-            { player = if playerReady
-                       then updatePacManPosition (grid timed) (player timed)
-                       else player timed
+            { player = if playerReady then nextPlayer else player timed
             , ghosts = nextGhosts
             , rng = nextRng
             , animationTimer = if playerReady then playerTime - playerInterval else playerTime
             , ghostMoveTimer = if ghostsReady then ghostTime - ghostInterval else ghostTime
+            , mouthAnimationTime =
+                if playerCanMove then mouthAnimationTime timed + dt else 0
             }
 
           afterTile = if playerReady then consumeTile moved else moved
-      in if playerReady || ghostsReady then handleCollisions afterTile else afterTile
+            in if playerReady || ghostsReady
+               then handleCollisions timed afterTile
+               else afterTile
