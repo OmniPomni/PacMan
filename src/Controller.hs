@@ -1,10 +1,11 @@
 module Controller where
 
 import Graphics.Gloss.Interface.IO.Game
-import Model (GameState(..), GameScreen(..), PacMan(..), Tile(..), Ghost(..), GhostType(..), GhostMode(..), setTile, Grid)
+import Model (GameState(..), GameScreen(..), PacMan(..), Tile(..), Ghost(..), GhostMode(..), setTile, Grid, ghostsForLevel)
 import qualified Model
 import Controller.Player (bufferInput, updatePacManPosition)
 import Controller.Ghost (updateGhosts)
+
 
 handleInputIO :: Event -> GameState -> IO GameState
 handleInputIO event gstate = return (handleInput event gstate)
@@ -19,9 +20,9 @@ handleInput event gstate = case gameScreen gstate of
 
     -- Press 1, 2, or 3 to select a level
     LevelSelect -> case event of
-        EventKey (Char '1') Down _ _ -> gstate {gameScreen = Playing, currentLevel = 1}
-        EventKey (Char '2') Down _ _ -> gstate {gameScreen = Playing, currentLevel = 2}
-        EventKey (Char '3') Down _ _ -> gstate {gameScreen = Playing, currentLevel = 3}
+        EventKey (Char '1') Down _ _ -> startLevel 1 gstate
+        EventKey (Char '2') Down _ _ -> startLevel 2 gstate
+        EventKey (Char '3') Down _ _ -> startLevel 3 gstate
         _                            -> gstate
 
     -- Press p to (un)pause the game and handle player input when the game is not paused
@@ -42,6 +43,12 @@ handleInput event gstate = case gameScreen gstate of
         EventKey (SpecialKey KeyEnter) Down _ _ -> gstate { gameScreen = StartScreen }
         _                                       -> gstate
 
+startLevel :: Int -> GameState -> GameState
+startLevel level gstate = 
+    gstate { gameScreen = Playing
+           , currentLevel = level
+           , ghosts = ghostsForLevel level
+           }
 
 handleCollisions :: GameState -> GameState
 handleCollisions gstate
@@ -50,7 +57,7 @@ handleCollisions gstate
       if lives gstate > 1
       then gstate { lives  = lives gstate - 1
                   , player = PacMan (13, 23) Model.Left Nothing
-                  , ghosts = [Ghost Red (13, 11) Model.Left Chase (26, 1) 0.0] 
+                  , ghosts = ghostsForLevel (currentLevel gstate) 
                   }
       else gstate { lives = 0, gameScreen = GameOver }
       

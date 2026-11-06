@@ -117,6 +117,21 @@ getTile g (x, y)
   | x < 0 || null g || x >= length (g !! y) = Wall
   | otherwise                               = (g !! y) !! x
 
+-- This handles the ghosts for each level
+ghostsForLevel :: Int -> [Ghost]
+ghostsForLevel level 
+  | level == 3 = standardGhosts ++ [purpleGhost]
+  | otherwise = standardGhosts
+  where
+    standardGhosts = 
+      [ Ghost Red    (13, 11) Model.Left Chase (26, 1) 0.0
+      , Ghost Pink   (13, 14) Model.Left Chase (1, 1)  0.0
+      , Ghost Cyan   (12, 14) Model.Left Chase (26, 1) 0.0
+      , Ghost Orange (14, 14) Model.Left Chase (1, 1)  0.0
+      ]
+    purpleGhost = Ghost Purple (15, 14) Model.Left Chase (26, 29) 0.0
+
+
 -- Default initial game state for testing
 initialGame :: IO GameState
 initialGame = do
@@ -166,7 +181,7 @@ initialGame = do
                  
   return GameState
     { player         = PacMan (13, 23) Model.Down Nothing
-    , ghosts         = [Ghost Red (13, 11) Model.Left Chase (26, 1) 0.0, Ghost Pink (13, 14) Model.Left Chase (1, 1) 0.0, Ghost Cyan (12, 14) Model.Left Chase (26, 1) 0.0, Ghost Orange (14, 14) Model.Left Chase (1, 1) 0.0]
+    , ghosts         = ghostsForLevel 1
     , grid           = arcadeGrid
     , score          = 0
     , lives          = 3
