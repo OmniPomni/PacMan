@@ -2,7 +2,8 @@ module Main where
 
 import Graphics.Gloss (Display (InWindow), black)
 import Graphics.Gloss.Interface.IO.Game (playIO)
-import Model (initialGame)
+import Levels (highScorePath, loadHighScore)
+import Model (GameState(highScore), initialGame)
 import View (renderGameIO)
 import Controller (handleInputIO, updateGameIO)
 
@@ -15,11 +16,12 @@ fps = 60
 main :: IO ()
 main = do
     initialState <- initialGame
+    savedScore <- loadHighScore highScorePath
     playIO
         window
         black
         fps
-        initialState
+        (initialState { highScore = savedScore })
         renderGameIO
         handleInputIO
         updateGameIO

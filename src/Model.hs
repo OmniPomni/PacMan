@@ -21,6 +21,12 @@ data Tile
 
 type Grid = [[Tile]]
 
+replaceAt :: Int -> a -> [a] -> [a]
+replaceAt i x xs = take i xs ++ [x] ++ drop (i + 1) xs
+
+setTile :: Position -> Tile -> Grid -> Grid
+setTile (x, y) newTile g = replaceAt y (replaceAt x newTile (g !! y)) g
+
 data PacMan = PacMan
   { pacmanPos :: Position
   , pacmanDir :: Direction
@@ -55,6 +61,7 @@ data GameScreen
   | LevelSelect
   | Playing
   | GameOver
+  | LevelComplete
   deriving (Eq, Show)
 
 data Level = Level
@@ -74,12 +81,18 @@ data GameState = GameState
   , modeTimer      :: Float
   , isPaused       :: Bool
   , rng            :: StdGen
+  , mouthAnimationTime :: Float
   , animationTimer :: Float
+  , ghostMoveTimer :: Float
+  , ghostMovesPerSecond :: Float
   , deathAnimation :: Maybe Float
   , highScore      :: Int
   , currentLevel   :: Int
   , gameScreen     :: GameScreen
   } deriving (Show)
+
+deathAnimationDuration :: Float
+deathAnimationDuration = 0.5
 
 class Movable a where
   getPos :: a -> Position
@@ -98,8 +111,8 @@ instance Movable Ghost where
 
 stepInDir :: Position -> Direction -> Position
 stepInDir (x, y) dir = case dir of
-  Model.Up    -> (x, y + 1)
-  Model.Down  -> (x, y - 1)
+  Model.Up    -> (x, y - 1)
+  Model.Down  -> (x, y + 1)
   Model.Left  -> (x - 1, y)
   Model.Right -> (x + 1, y)
 
@@ -110,26 +123,35 @@ getTile g (x, y)
   | x < 0 || null g || x >= length (g !! y) = Wall
   | otherwise                               = (g !! y) !! x
 
+-- This handles the ghosts for each level
+ghostsForLevel :: Int -> [Ghost]
+ghostsForLevel number = ghostsRoster Chase roster
+  where 
+    standardRoster = [Red, Pink, Cyan, Orange]
+    roster 
+      | number == 3 = standardRoster ++ [Purple]
+      | otherwise = standardRoster
+
+
+ghostsRoster :: GhostMode -> [GhostType] -> [Ghost]
+ghostsRoster mode = map spawn
+  where
+    spawn kind = case kind of
+      Red    -> Ghost Red    (13, 11) Model.Left mode (26, 1)  0
+      Pink   -> Ghost Pink   (13, 14) Model.Left mode (1, 1)   0
+      Cyan   -> Ghost Cyan   (12, 14) Model.Left mode (26, 1)  0
+      Orange -> Ghost Orange (14, 14) Model.Left mode (1, 1)   0
+      Purple -> Ghost Purple (15, 14) Model.Left mode (26, 29) 0
+
+
 -- Default initial game state for testing
 initialGame :: IO GameState
 initialGame = do
-  gen <- getStdGen
-  
-  let testGrid = 
-        [ [Wall, Wall,  Wall,  Wall,  Wall,  Wall,  Wall,  Wall,  Wall,  Wall,  Wall]
-        , [Wall, Empty, Empty, Empty, Wall,  Empty, Empty, Empty, Empty, Empty, Wall]
-        , [Wall, Empty, Wall,  Empty, Wall,  Empty, Wall,  Wall,  Wall,  Empty, Wall]
-        , [Wall, Empty, Wall,  Empty, Empty, Empty, Empty, Empty, Wall,  Empty, Wall]
-        , [Wall, Empty, Wall,  Wall,  Wall,  Empty, Wall,  Empty, Wall,  Empty, Wall]
-        , [Wall, Empty, Empty, Empty, Empty, Empty, Wall,  Empty, Empty, Empty, Wall]
-        , [Wall, Empty, Wall,  Wall,  Wall,  Empty, Wall,  Wall,  Wall,  Empty, Wall]
-        , [Wall, Empty, Empty, Empty, Wall,  Empty, Empty, Empty, Empty, Empty, Wall]
-        , [Wall, Wall,  Wall,  Wall,  Wall,  Wall,  Wall,  Wall,  Wall,  Wall,  Wall] ]
-                 
+  gen <- getStdGen             
   return GameState
-    { player         = PacMan (1, 1) Model.Right Nothing
-    , ghosts         = []
-    , grid           = testGrid
+    { player         = PacMan (13, 23) Model.Down Nothing
+    , ghosts         = ghostsForLevel 1
+    , grid           = []
     , score          = 0
     , lives          = 3
     , currentMode    = Scatter
@@ -137,6 +159,9 @@ initialGame = do
     , isPaused       = False
     , rng            = gen
     , animationTimer = 0
+    , ghostMoveTimer = 0
+    , ghostMovesPerSecond = 1 / 0.15
+    , mouthAnimationTime = 0
     , deathAnimation = Nothing
     , highScore      = 0
     , currentLevel   = 1
