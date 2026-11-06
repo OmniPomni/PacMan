@@ -93,38 +93,62 @@ oppositeDir dir = case dir of
   Model.Left  -> Model.Right
   Model.Right -> Model.Left
 
+-- Guide ghosts through the shared cage gate after they spawn.
+houseExitDirection :: Grid -> Position -> Maybe Direction
+houseExitDirection maze pos@(x, y)
+  | insideHouse || onGate
+  , getTile maze (exitColumn, gateRow) == Model.Gate
+  , getTile maze (stepInDir pos direction) /= Wall = Just direction
+  | otherwise = Nothing
+  where
+    (leftGate, gateRow) = (13, 12)
+    rightGate = leftGate + 1
+    (houseLeft, houseTop) = (11, 13)
+    (houseRight, houseBottom) = (16, 15)
+
+    insideHouse =
+      x >= houseLeft && x <= houseRight && y >= houseTop && y <= houseBottom
+    onGate = y == gateRow && (x == leftGate || x == rightGate)
+    exitColumn = if x <= leftGate then leftGate else rightGate
+
+    direction
+      | x < exitColumn = Model.Right
+      | x > exitColumn = Model.Left
+      | otherwise      = Model.Up
 
 getValidGhostDirs :: Grid -> Ghost -> [Direction]
-getValidGhostDirs g ghost = 
-  let currentPos = ghostPos ghost
-      currentDir = ghostDir ghost
-      allDirs = [Model.Up, Model.Down, Model.Left, Model.Right]
-      
-      -- Check if current direction doesn't lead to a wall
-      isNotWall d = getTile g (stepInDir currentPos d) /= Wall
+getValidGhostDirs maze ghost =
+  let allDirs = [Model.Up, Model.Down, Model.Left, Model.Right]
 
-      -- Filter out the reverse direction and walls but allow reversing if no other options are available
-      validForwardDirs = filter (\d -> d /= oppositeDir currentDir && isNotWall d) allDirs
-        in if null validForwardDirs
-           then filter isNotWall allDirs -- If no valid forward direction, allow reversing
-           else validForwardDirs
+      canMove :: Direction -> Bool
+      canMove dir =
+        let tile = getTile maze (stepInDir (ghostPos ghost) dir)
+        in tile /= Wall && tile /= Model.Gate
 
+      validDirs = filter canMove allDirs
+      forwardDirs = filter (/= oppositeDir (ghostDir ghost)) validDirs
+  in if null forwardDirs then validDirs else forwardDirs
 
 updateGhosts :: GameState -> (StdGen, [Ghost])
 updateGhosts gstate = mapAccumL (updateSingleGhost gstate) (rng gstate) (ghosts gstate)
 
 updateSingleGhost :: GameState -> StdGen -> Ghost -> (StdGen, Ghost)
-updateSingleGhost gstate gen ghost =
-  let g         = grid gstate
-      validDirs = getValidGhostDirs g ghost
-  in if ghostMode ghost == Frightened
-     then let (idx, newGen) = randomR (0, length validDirs - 1) gen
-              nextDir       = validDirs !! idx
-          in (newGen, ghost { ghostPos = stepInDir (ghostPos ghost) nextDir
-                            , ghostDir = nextDir 
-                            })
-     else let target  = ghostTarget ghost gstate
-              nextDir = chooseNextMove (ghostPos ghost) validDirs target
-          in (gen, ghost { ghostPos = stepInDir (ghostPos ghost) nextDir
-                         , ghostDir = nextDir 
-                         })
+updateSingleGhost gstate gen ghost
+  | Just dir <- houseExitDirection maze (ghostPos ghost) = (gen, move dir)
+  | otherwise =
+      case getValidGhostDirs maze ghost of
+        [] -> (gen, ghost)
+        validDirs
+          | ghostMode ghost == Frightened ->
+              let (index, nextGen) = randomR (0, length validDirs - 1) gen
+              in (nextGen, move (validDirs !! index))
+          | otherwise ->
+              let target = ghostTarget ghost gstate
+                  dir = chooseNextMove (ghostPos ghost) validDirs target
+              in (gen, move dir)
+  where
+    maze = grid gstate
+
+    move :: Direction -> Ghost
+    move dir =
+      ghost { ghostPos = stepInDir (ghostPos ghost) dir, ghostDir = dir }

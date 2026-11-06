@@ -37,8 +37,8 @@ renderGame gstate = case gameScreen gstate of
     Playing 
       | isPaused gstate -> pictures [renderPlaying gstate, renderPauseOverlay]
       | otherwise       -> renderPlaying gstate
-    LevelComplete -> renderLevelComplete
-    GameOver    -> renderGameOver
+    LevelComplete -> renderLevelComplete gstate
+    GameOver    -> renderGameOver gstate
 
 -- renderGame helper functions
 renderStartScreen :: Picture
@@ -52,11 +52,8 @@ renderLevelSelect = pictures
   , translate (-145) (-55) $ scale 0.16 0.16 $ color white $ text "3  Good Luck :3"
   ]
 
-renderLevelComplete :: Picture
-renderLevelComplete = pictures 
-  [ translate (-120) 20 $ scale 0.25 0.25 $ color green $ text "YOU WIN!"
-  , translate (-200) (-30) $ scale 0.15 0.15 $ color white $ text "Press ENTER to return"
-  ]
+renderLevelComplete :: GameState -> Picture
+renderLevelComplete = renderResult green "YOU WIN!"
 
 -- Draws the grid by iterating over each tile and drawing it
 drawGrid :: Grid -> Picture
@@ -117,11 +114,16 @@ renderPauseOverlay = pictures
   , translate (-105) (-30) $ scale 0.15 0.15 $ color white $ text "Press P to resume"
   ]
 
-renderGameOver :: Picture
-renderGameOver = pictures 
-  [ translate (-150) 20 $ scale 0.25 0.25 $ color red $ text "GAME OVER"
-  , translate (-200) (-30) $ scale 0.15 0.15 $ color white $ text "Press ENTER to return"
+renderResult :: Color -> String -> GameState -> Picture
+renderResult titleColor title state = pictures
+  [ translate (-100) 65 $ scale 0.25 0.25 $ color titleColor $ text title
+  , translate (-112) 15 $ scale 0.15 0.15 $ color white $ text ("Score: " ++ show (score state))
+  , translate (-112) (-15) $ scale 0.15 0.15 $ color white $ text ("High score: " ++ show (highScore state))
+  , translate (-112) (-60) $ scale 0.15 0.15 $ color white $ text "Press ENTER to return"
   ]
+
+renderGameOver :: GameState -> Picture
+renderGameOver = renderResult red "GAME OVER"
 
 -- Draws Pac-Man at his current position
 mouthFrameDuration :: Float

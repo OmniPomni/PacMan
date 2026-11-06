@@ -6,12 +6,47 @@ import Model
   , ghostsForLevel, ghostsRoster
   )
 import qualified Model
+import Control.Exception (bracketOnError)
+import qualified Data.ByteString.Char8 as BS
+import System.Directory (removeFile, renameFile)
+import System.FilePath (takeDirectory, takeFileName)
+import System.IO (Handle, hClose, hPrint, hPutStrLn, openTempFile, stderr)
+import System.IO.Error (isDoesNotExistError, tryIOError)
+import Text.Read (readMaybe)
+
+highScorePath :: FilePath
+highScorePath = "highscore.txt"
 
 loadHighScore :: FilePath -> IO Int
-loadHighScore = undefined
+loadHighScore path = do
+  result <- tryIOError (BS.readFile path)
+  case result of
+    Right contents ->
+      case readMaybe (BS.unpack contents) :: Maybe Integer of
+        Just value | value >= 0 && value <= toInteger (maxBound :: Int) ->
+          pure (fromInteger value)
+        _ -> pure 0
+    Left err
+      | isDoesNotExistError err -> pure 0
+      | otherwise -> do
+        hPutStrLn stderr ("Could not load" ++ show err)
+        pure 0
 
 saveHighScore :: FilePath -> Int -> IO ()
-saveHighScore = undefined
+saveHighScore path value = bracketOnError
+  (openTempFile (takeDirectory path) (takeFileName path ++ ".tmp"))
+  cleanup
+  (\(tempPath, handle)-> do
+    hPrint handle value
+    hClose handle
+    --Replace old score after new file has been written
+    renameFile tempPath path)
+  where 
+    cleanup :: (FilePath, Handle) -> IO ()
+    cleanup (tempPath, handle) = do
+      _ <- tryIOError (hClose handle)
+      _ <- tryIOError (removeFile tempPath)
+      pure ()
 
 loadLevel :: Level -> GameState -> GameState
 loadLevel level state =

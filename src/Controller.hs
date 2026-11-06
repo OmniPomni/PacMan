@@ -7,6 +7,9 @@ import Controller.Player (bufferInput, updatePacManPosition)
 import Controller.Ghost (updateGhosts)
 import Data.List (find)
 import Levels (defaultLevels, loadLevel)
+import Levels (highScorePath, saveHighScore)
+import System.IO (hPutStrLn, stderr)
+import System.IO.Error (tryIOError)
 
 handleInputIO :: Event -> GameState -> IO GameState
 handleInputIO event gstate = return (handleInput event gstate)
@@ -136,7 +139,20 @@ advanceDeath dt elapsed state
 
 
 updateGameIO :: Float -> GameState -> IO GameState
-updateGameIO dt gstate = return (updateGame dt gstate)
+updateGameIO dt state = do
+  let next = updateGame dt state
+      finished = gameScreen state == Playing
+              && gameScreen next `elem` [GameOver, LevelComplete]
+
+  if finished && score next > highScore state
+    then do
+      result <- tryIOError (saveHighScore highScorePath (score next))
+      case result of
+        Right () -> pure (next { highScore = score next })
+        Left err -> do
+          hPutStrLn stderr ("Could not save high score: " ++ show err)
+          pure next
+    else pure next
 
 updateGame :: Float -> GameState -> GameState
 updateGame dt state
