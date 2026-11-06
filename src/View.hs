@@ -33,7 +33,9 @@ renderGame :: GameState -> Picture
 renderGame gstate = case gameScreen gstate of
     StartScreen -> renderStartScreen
     LevelSelect -> renderLevelSelect
-    Playing     -> renderPlaying gstate
+    Playing 
+      | isPaused gstate -> pictures [renderPlaying gstate, renderPauseOverlay]
+      | otherwise       -> renderPlaying gstate
     LevelComplete -> renderLevelComplete
     GameOver    -> renderGameOver
 
@@ -92,6 +94,13 @@ drawHUD livesCount currentScore = pictures
     translate (-300) 390 $ scale 0.15 0.15 $ color white $ text ("Score: " ++ show currentScore)
   , -- Lives positioned below the bottom-left of the maze
     translate (-300) (-390) $ scale 0.15 0.15 $ color white $ text ("Lives: " ++ show livesCount)
+  ]
+
+renderPauseOverlay :: Picture
+renderPauseOverlay = pictures
+  [color (makeColor 0 0 0 0.85) $ rectangleSolid 340 130
+  , translate (-85) 15 $ scale 0.30 0.30 $ color white $ text "PAUSED"
+  , translate (-105) (-30) $ scale 0.15 0.15 $ color white $ text "Press P to resume"
   ]
 
 renderGameOver :: Picture
