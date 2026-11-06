@@ -82,6 +82,8 @@ data GameState = GameState
   , isPaused       :: Bool
   , rng            :: StdGen
   , animationTimer :: Float
+  , ghostMoveTimer :: Float
+  , ghostMovesPerSecond :: Float
   , deathAnimation :: Maybe Float
   , highScore      :: Int
   , currentLevel   :: Int
@@ -119,70 +121,33 @@ getTile g (x, y)
 
 -- This handles the ghosts for each level
 ghostsForLevel :: Int -> [Ghost]
-ghostsForLevel level 
-  | level == 3 = standardGhosts ++ [purpleGhost]
-  | otherwise = standardGhosts
+ghostsForLevel number = ghostsRoster Chase roster
+  where 
+    standardRoster = [Red, Pink, Cyan, Orange]
+    roster 
+      | number == 3 = standardRoster ++ [Purple]
+      | otherwise = standardRoster
+
+
+ghostsRoster :: GhostMode -> [GhostType] -> [Ghost]
+ghostsRoster mode = map spawn
   where
-    standardGhosts = 
-      [ Ghost Red    (13, 11) Model.Left Chase (26, 1) 0.0
-      , Ghost Pink   (13, 14) Model.Left Chase (1, 1)  0.0
-      , Ghost Cyan   (12, 14) Model.Left Chase (26, 1) 0.0
-      , Ghost Orange (14, 14) Model.Left Chase (1, 1)  0.0
-      ]
-    purpleGhost = Ghost Purple (15, 14) Model.Left Chase (26, 29) 0.0
+    spawn kind = case kind of
+      Red    -> Ghost Red    (13, 11) Model.Left mode (26, 1)  0
+      Pink   -> Ghost Pink   (13, 14) Model.Left mode (1, 1)   0
+      Cyan   -> Ghost Cyan   (12, 14) Model.Left mode (26, 1)  0
+      Orange -> Ghost Orange (14, 14) Model.Left mode (1, 1)   0
+      Purple -> Ghost Purple (15, 14) Model.Left mode (26, 29) 0
 
 
 -- Default initial game state for testing
 initialGame :: IO GameState
 initialGame = do
-  gen <- getStdGen
-  
-  let layout = 
-        [ "############################"
-        , "#o...........##...........o#"
-        , "#.####.#####.##.#####.####.#"
-        , "#.####.#####.##.#####.####.#"
-        , "#.####.#####.##.#####.####.#"
-        , "#..........................#"
-        , "#.####.##.########.##.####.#"
-        , "#.####.##.########.##.####.#"
-        , "#......##....##....##......#"
-        , "######.#####.##.#####.######"
-        , "######.#####.##.#####.######"
-        , "######.##..........##.######"
-        , "######.##.###--###.##.######"
-        , "######.##.#      #.##.######"
-        , "..........#      #.........."
-        , "######.##.#      #.##.######"
-        , "######.##.########.##.######"
-        , "######.##..........##.######"
-        , "######.##.########.##.######"
-        , "######.##.########.##.######"
-        , "#............##............#"
-        , "#.####.#####.##.#####.####.#"
-        , "#.####.#####.##.#####.####.#"
-        , "#...##................##...#"
-        , "###.##.##.########.##.##.###"
-        , "###.##.##.########.##.##.###"
-        , "#......##....##....##......#"
-        , "#.##########.##.##########.#"
-        , "#.##########.##.##########.#"
-        , "#o...........##...........o#"
-        , "############################"
-        ]
-        
-      charToTile '#' = Wall
-      charToTile '-' = Gate
-      charToTile '.' = Pellet
-      charToTile 'o' = Energizer
-      charToTile _   = Empty
-      
-      arcadeGrid = map (map charToTile) layout
-                 
+  gen <- getStdGen             
   return GameState
     { player         = PacMan (13, 23) Model.Down Nothing
     , ghosts         = ghostsForLevel 1
-    , grid           = arcadeGrid
+    , grid           = []
     , score          = 0
     , lives          = 3
     , currentMode    = Scatter
@@ -190,6 +155,8 @@ initialGame = do
     , isPaused       = False
     , rng            = gen
     , animationTimer = 0
+    , ghostMoveTimer = 0
+    , ghostMovesPerSecond = 1 / 0.15
     , deathAnimation = Nothing
     , highScore      = 0
     , currentLevel   = 1

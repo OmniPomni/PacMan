@@ -1,11 +1,12 @@
 module Controller where
 
 import Graphics.Gloss.Interface.IO.Game
-import Model (GameState(..), GameScreen(..), PacMan(..), Tile(..), Ghost(..), GhostMode(..), setTile, Grid, ghostsForLevel)
+import Model (GameState(..), GameScreen(..), PacMan(..), Tile(..), Ghost(..), GhostMode(..), setTile, Grid, Level(levelNumber),ghostsForLevel)
 import qualified Model
 import Controller.Player (bufferInput, updatePacManPosition)
 import Controller.Ghost (updateGhosts)
-
+import Data.List (find)
+import Levels (defaultLevels, loadLevel)
 
 handleInputIO :: Event -> GameState -> IO GameState
 handleInputIO event gstate = return (handleInput event gstate)
@@ -44,11 +45,10 @@ handleInput event gstate = case gameScreen gstate of
         _                                       -> gstate
 
 startLevel :: Int -> GameState -> GameState
-startLevel level gstate = 
-    gstate { gameScreen = Playing
-           , currentLevel = level
-           , ghosts = ghostsForLevel level
-           }
+startLevel number state =
+  case find ((== number) . levelNumber) defaultLevels of
+    Just level -> loadLevel level state
+    Nothing    -> state
 
 handleCollisions :: GameState -> GameState
 handleCollisions gstate
@@ -120,18 +120,29 @@ updateGameIO :: Float -> GameState -> IO GameState
 updateGameIO dt gstate = return (updateGame dt gstate)
 
 updateGame :: Float -> GameState -> GameState
-updateGame dt gstate
-  | isPaused gstate = gstate
-  | gameScreen gstate == Playing = 
-      let gstateWithTimer = updateWaveTimer dt gstate
-          newAnimTimer    = animationTimer gstateWithTimer + dt
-      in if newAnimTimer >= 0.15 
-         then let (newRng, updatedGhosts) = updateGhosts gstateWithTimer
-                  movedState = gstateWithTimer { player = updatePacManPosition (grid gstateWithTimer) (player gstateWithTimer)
-                                               , ghosts = updatedGhosts
-                                               , rng    = newRng
-                                               , animationTimer = 0 
-                                               }
-              in handleCollisions (consumeTile movedState)
-         else gstateWithTimer { animationTimer = newAnimTimer }
-  | otherwise = gstate
+updateGame dt state
+  | isPaused state || gameScreen state /= Playing = state
+  | otherwise =
+      let timed = updateWaveTimer dt state
+          playerTime = animationTimer timed + dt
+          ghostTime = ghostMoveTimer timed + dt
+          playerInterval = 0.15
+          ghostInterval = 1 / ghostMovesPerSecond timed
+          playerReady = playerTime >= playerInterval
+          ghostsReady = ghostMovesPerSecond timed > 0 && ghostTime >= ghostInterval
+
+          (nextRng, nextGhosts) =
+            if ghostsReady then updateGhosts timed else (rng timed, ghosts timed)
+
+          moved = timed
+            { player = if playerReady
+                       then updatePacManPosition (grid timed) (player timed)
+                       else player timed
+            , ghosts = nextGhosts
+            , rng = nextRng
+            , animationTimer = if playerReady then playerTime - playerInterval else playerTime
+            , ghostMoveTimer = if ghostsReady then ghostTime - ghostInterval else ghostTime
+            }
+
+          afterTile = if playerReady then consumeTile moved else moved
+      in if playerReady || ghostsReady then handleCollisions afterTile else afterTile

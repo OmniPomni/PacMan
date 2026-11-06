@@ -44,7 +44,12 @@ renderStartScreen :: Picture
 renderStartScreen = translate (-150) 0 $ scale 0.25 0.25 $ color white $ text "Press ENTER to Start"
 
 renderLevelSelect :: Picture
-renderLevelSelect = translate (-200) 0 $ scale 0.25 0.25 $ color white $ text "Press 1 to load Test Maze"
+renderLevelSelect = pictures
+  [ translate (-125) 65 $ scale 0.22 0.22 $ color green $ text "SELECT LEVEL"
+  , translate (-145) 15 $ scale 0.16 0.16 $ color white $ text "1  Easy"
+  , translate (-145) (-20) $ scale 0.16 0.16 $ color white $ text "2  Medium"
+  , translate (-145) (-55) $ scale 0.16 0.16 $ color white $ text "3  Good Luck :3"
+  ]
 
 renderLevelComplete :: Picture
 renderLevelComplete = pictures 
