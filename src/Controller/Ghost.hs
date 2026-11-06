@@ -1,6 +1,6 @@
 module Controller.Ghost where
 
-import Data.List (minimumBy)
+import Data.List (find, minimumBy)
 import Data.Ord (comparing)
 import Model (GameState(..), Ghost(..), GhostType(..), GhostMode(..), Position, Direction, Grid, PacMan(..), Tile(Wall), stepInDir, getTile)
 import qualified Model
@@ -48,19 +48,22 @@ targetOrange orangePos playerPos orangeHomeCorner
   | otherwise                        = orangeHomeCorner
 
 targetPurple :: Ghost -> GameState -> Position
-targetPurple _ gamestate
-  | pacmanIsNear gamestate = targetRed pPos
-  | redIsClose gamestate   = targetCyan pPos pDir (getRedPos gamestate)
-  | otherwise              = targetPink pPos pDir
+targetPurple purple game
+  | pacmanIsNear purple pPos = targetRed pPos
+  | Just red <- find ((== Red) . ghostType) (ghosts game)
+  , redIsClose red pPos = targetCyan pPos pDir (ghostPos red)
+  |otherwise = targetPink pPos pDir
   where
-    pPos = pacmanPos (player gamestate)
-    pDir = pacmanDir (player gamestate)
+    pPos = pacmanPos (player game)
+    pDir = pacmanDir (player game)
 
-    pacmanIsNear :: GameState -> Bool
-    pacmanIsNear = undefined
+pacmanIsNear :: Ghost -> Position -> Bool
+pacmanIsNear purple pacmanposition = 
+  distance(ghostPos purple) pacmanposition <= 3 
 
-    redIsClose :: GameState -> Bool
-    redIsClose = undefined
+redIsClose :: Ghost -> Position -> Bool
+redIsClose red pacmanposition = 
+  distance (ghostPos red) pacmanposition <= 4 
 
 
 distance :: Position -> Position -> Float
