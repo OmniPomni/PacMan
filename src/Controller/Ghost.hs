@@ -49,7 +49,7 @@ targetOrange orangePos playerPos orangeHomeCorner
   | otherwise                        = orangeHomeCorner
 
 targetPurple :: Ghost -> GameState -> Position
-targetPurple _ gamestate
+targetPurple purple gamestate
   | pacmanIsNear gamestate = targetRed pPos
   | redIsClose gamestate   = targetCyan pPos pDir (getRedPos gamestate)
   | otherwise              = targetPink pPos pDir
@@ -58,10 +58,14 @@ targetPurple _ gamestate
     pDir = pacmanDir (player gamestate)
 
     pacmanIsNear :: GameState -> Bool
-    pacmanIsNear = undefined
+    pacmanIsNear state = 
+     distance (ghostPos purple) (pacmanPos (player state)) <= 3
 
     redIsClose :: GameState -> Bool
-    redIsClose = undefined
+    redIsClose state =
+      case filter ((== Red) . ghostType) (ghosts state) of
+        (red: _) -> distance (ghostPos red) (pacmanPos (player state)) <= 4
+        []       -> False 
 
 
 distance :: Position -> Position -> Float
